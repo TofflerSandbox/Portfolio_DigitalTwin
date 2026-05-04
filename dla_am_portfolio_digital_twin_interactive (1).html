@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DLA AM Portfolio Digital Twin — Interactive Learning Tool</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --navy: #092a4a;
+      --blue: #0f5f99;
+      --cyan: #25c2d6;
+      --magenta: #7b1fa2;
+      --red: #c92032;
+      --gold: #f2b705;
+      --green: #6fa84f;
+      --ink: #102033;
+      --muted: #5e7187;
+      --paper: #f6f8fb;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top right, rgba(123,31,162,.18), transparent 38%),
+                  linear-gradient(180deg, #071f38 0%, #0b2c4d 23%, #f6f8fb 23%, #f6f8fb 100%);
+      color: var(--ink);
+    }
+    .glass { background: rgba(255,255,255,.88); backdrop-filter: blur(14px); }
+    .wire {
+      background-image:
+        linear-gradient(rgba(37,194,214,.12) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(37,194,214,.12) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+    .chip { border: 1px solid rgba(15,95,153,.18); }
+    .stage.active { background: #fff; color: var(--navy); border-color: rgba(37,194,214,.55); box-shadow: 0 10px 30px rgba(7,31,56,.12); }
+    .stage { transition: all .2s ease; }
+    .cell { cursor: pointer; transition: transform .18s ease, filter .18s ease; }
+    .cell:hover { transform: translateY(-2px); filter: brightness(1.05); }
+    .bar3d { transform: skewY(-8deg); transform-origin: bottom; }
+    .tooltip-card { pointer-events: none; opacity: 0; transform: translateY(5px); transition: opacity .15s ease, transform .15s ease; }
+    .tooltip-card.show { opacity: 1; transform: translateY(0); }
+    .farm-field { min-height: 154px; background-image: linear-gradient(135deg, rgba(111,168,79,.22) 25%, transparent 25%), linear-gradient(225deg, rgba(111,168,79,.22) 25%, transparent 25%), linear-gradient(45deg, rgba(111,168,79,.22) 25%, transparent 25%), linear-gradient(315deg, rgba(111,168,79,.22) 25%, #eef7e9 25%); background-position: 18px 0, 18px 0, 0 0, 0 0; background-size: 36px 36px; background-repeat: repeat; }
+    .pulse-dot { animation: pulse 1.8s infinite; }
+    @keyframes pulse { 0%,100% { transform: scale(1); opacity: .9; } 50% { transform: scale(1.25); opacity: .45; } }
+    details summary { cursor: pointer; }
+    .persona-btn.active { background: var(--navy); color: white; border-color: var(--navy); }
+    .ladder-step { transition: all .18s ease; }
+    .ladder-step.active { transform: translateY(-4px); box-shadow: 0 18px 35px rgba(7,31,56,.16); border-color: rgba(37,194,214,.75); }
+    .flow-node { position: relative; }
+    .flow-node:not(:last-child)::after { content: "→"; position: absolute; right: -20px; top: 50%; transform: translateY(-50%); color: #7a8ca3; font-weight: 900; }
+    @media (max-width: 768px) { .flow-node:not(:last-child)::after { content: "↓"; right: 50%; top: auto; bottom: -24px; transform: translateX(50%); } }
+    .image-card { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+    .image-card:hover { transform: translateY(-4px); box-shadow: 0 22px 45px rgba(7,31,56,.13); border-color: rgba(37,194,214,.45); }
+    .image-card img { width: 100%; height: 230px; object-fit: cover; border-radius: 1rem; background: linear-gradient(135deg, #dbeafe, #f8fafc); }
+    .image-fallback { min-height: 230px; border-radius: 1rem; display: flex; align-items: center; justify-content: center; text-align: center; padding: 1.5rem; color: #e0f2fe; background: radial-gradient(circle at top right, rgba(37,194,214,.28), transparent 42%), linear-gradient(135deg, #092a4a, #0f172a); }
+    .source-link { color: #0f5f99; font-weight: 800; text-decoration: none; }
+    .source-link:hover { text-decoration: underline; }
+    .story-rail { background: linear-gradient(90deg, rgba(9,42,74,.96), rgba(15,95,153,.92)), url('assets/dvids/dla-dmc-2024.jpg'); background-size: cover; background-position: center; }
+    .proof-card { min-height: 100%; }
+    .image-card { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+    .image-card:hover { transform: translateY(-4px); box-shadow: 0 22px 45px rgba(7,31,56,.13); border-color: rgba(37,194,214,.45); }
+    .image-card img { width: 100%; height: 230px; object-fit: cover; border-radius: 1rem; background: linear-gradient(135deg, #dbeafe, #f8fafc); }
+    .image-fallback { min-height: 230px; border-radius: 1rem; display: flex; align-items: center; justify-content: center; text-align: center; padding: 1.5rem; color: #e0f2fe; background: radial-gradient(circle at top right, rgba(37,194,214,.28), transparent 42%), linear-gradient(135deg, #092a4a, #0f172a); }
+    .source-link { color: #0f5f99; font-weight: 800; text-decoration: none; }
+    .source-link:hover { text-decoration: underline; }
+    .story-rail { background: linear-gradient(90deg, rgba(9,42,74,.96), rgba(15,95,153,.92)), url('assets/dvids/dla-dmc-2024.jpg'); background-size: cover; background-position: center; }
+    .proof-card { min-height: 100%; }
+    .image-card { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+    .image-card:hover { transform: translateY(-4px); box-shadow: 0 22px 45px rgba(7,31,56,.13); border-color: rgba(37,194,214,.45); }
+    .image-card img { width: 100%; height: 230px; object-fit: cover; border-radius: 1rem; background: linear-gradient(135deg, #dbeafe, #f8fafc); }
+    .image-fallback { min-height: 230px; border-radius: 1rem; display: flex; align-items: center; justify-content: center; text-align: center; padding: 1.5rem; color: #e0f2fe; background: radial-gradient(circle at top right, rgba(37,194,214,.28), transparent 42%), linear-gradient(135deg, #092a4a, #0f172a); }
+    .source-link { color: #0f5f99; font-weight: 800; text-decoration: none; }
+    .source-link:hover { text-decoration: underline; }
+    .story-rail { background: linear-gradient(90deg, rgba(9,42,74,.96), rgba(15,95,153,.92)), url('assets/d
+    .image-card { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+    .image-card:hover { transform: translateY(-4px); box-shadow: 0 22px 45px rgba(7,31,56,.13); border-color: rgba(37,194,214,.45); }
+    .image-card img { width: 100%; height: 230px; object-fit: cover; border-radius: 1rem; background: linear-gradient(135deg, #dbeafe, #f8fafc); }
+    .image-fallback { min-height: 230px; border-radius: 1rem; display: flex; align-items: center; justify-content: center; text-align: center; padding: 1.5rem; color: #e0f2fe; background: radial-gradient(circle at top right, rgba(37,194,214,.28), transparent 42%), linear-gradient(135deg, #092a4a, #0f172a); }
+    .source-link { color: #
+    .image-card { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+    .image-card:hover { transform: translateY(-4px); box-shadow: 0 22px 45px rgba(7,31,56,.13); border-color: rgba(37,194,214,.45); }
+    .image-card img { width: 100%; height: 230px; object-fit: cover; border-radius: 1rem; background: linear-gradient(135deg, #dbeafe, #f8fafc); }
+    .image-fallback { min-height: 230px; border-radius: 1rem; display: flex;
+    .image-card { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+    .image-card:hover { transform: transl
+  </style>
+</head>
+<body>
+  <header class="text-white wire">
+    <nav class="max-w-7xl mx-auto px-5 py-5 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="h-10 w-10 rounded-xl bg-red-600 flex items-center justify-center font-black tracking-tight">TA</div>
+        <div>
+          <p class="text-xs uppercase tracking-[.28em] text-cyan-200">Interactive teaching tool</p>
+          <h1 class="text-xl md:text-2xl font-bold">Portfolio Digital Twin for Additive Manufacturing R&D</h1>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-2 text-sm">
+        <a href="#evidence" class="px-3 py-2 rounded-full bg-white/10 hover:bg-white/20">Evidence</a>
+        <a href="#evidence" class="px-3 py-2 rounded-full bg-white/10 hover:bg-white/20">Evidence</a>
+        <a href="#learn" class="px-3 py-2 rounded-full bg-white/10 hover:bg-white/20">Learn</a>
+        <a href="#map" class="px-3 py-2 rounded-full bg-white/10 hover:bg-white/20">BA/TRL Map</a>
+        <a href="#twin" class="px-3 py-2 rounded-full bg-white/10 hover:bg-white/20">Digital Twin</a>
+        <a href="#scenario" class="px-3 py-2 rounded-full bg-white/10 hover:bg-white/20">Scenario Lab</a>
+        <a href="#maturity" class="px-3 py-2 rounded-full bg-white/10 hover:bg-white/20">Maturity</a>
+        <a href="#facilitation" class="px-3 py-2 rounded-full bg-white/10 hover:bg-white/20">Use It</a>
+      </div>
+    </nav>
+
+    <section class="max-w-7xl mx-auto px-5 pt-12 pb-20">
+      <div class="grid lg:grid-cols-2 gap-8 items-center">
+        <div>
+          <p class="text-cyan-200 font-semibold mb-4">A third-wave communication experience for a novel, complex R&D problem</p>
+          <h2 class="text-4xl md:text-6xl font-black leading-tight tracking-tight">From heroic spreadsheets to a living decision system.</h2>
+          <p class="mt-6 text-lg text-blue-50 max-w-2xl">Explore why DLA Additive Manufacturing institutionalization overwhelms traditional program management, then experiment with how a portfolio digital twin can restore PM time, confidence, and portfolio throughput.</p>
+          <div class="mt-5 grid sm:grid-cols-3 gap-3 max-w-2xl text-sm">
+            <div class="rounded-2xl bg-white/10 border border-white/10 p-3"><span class="block text-cyan-200 font-black">See</span> real DoD operating context</div>
+            <div class="rounded-2xl bg-white/10 border border-white/10 p-3"><span class="block text-cyan-200 font-black">Map</span> the AM portfolio terrain</div>
+            <div class="rounded-2xl bg-white/10 border border-white/10 p-3"><span class="block text-cyan-200 font-black">Simulate</span> PM burden and throughput</div>
+          </div>
+          <div class="mt-8 flex flex-wrap gap-3">
+            <a href="#learn" class="px-5 py-3 rounded-xl bg-cyan-400 text-slate-950 font-bold hover:bg-cyan-300">Start the walkthrough</a>
+            <a href="#scenario" class="px-5 py-3 rounded-xl border border-white/30 font-bold hover:bg-white/10">Jump to simulation</a>
+          </div>
+          <div class="mt-8 rounded-3xl bg-white/10 border border-white/10 p-4 max-w-2xl">
+            <p class="text-sm uppercase tracking-[.2em] text-cyan-200 font-bold">Choose the audience lens</p>
+            <div id="personaButtons" class="mt-3 flex flex-wrap gap-2"></div>
+            <p id="personaNarrative" class="mt-3 text-blue-50 text-sm"></p>
+          </div>
+        </div>
+        <div class="glass rounded-3xl p-5 shadow-2xl text-slate-900">
+          <div class="grid grid-cols-3 gap-3 mb-4">
+            <div class="rounded-2xl p-4 bg-slate-50">
+              <p class="text-xs text-slate-500">PM burden restored</p>
+              <p class="text-3xl font-black" id="heroTime">53%</p>
+            </div>
+            <div class="rounded-2xl p-4 bg-slate-50">
+              <p class="text-xs text-slate-500">Portfolio mode</p>
+              <p class="text-lg font-black">Continuous</p>
+            </div>
+            <div class="rounded-2xl p-4 bg-slate-50">
+              <p class="text-xs text-slate-500">Core lens</p>
+              <p class="text-lg font-black">BA × TRL</p>
+            </div>
+          </div>
+          <div class="rounded-3xl bg-gradient-to-br from-slate-900 to-blue-900 p-5 text-white min-h-[340px] relative overflow-hidden">
+            <div class="absolute inset-0 wire opacity-60"></div>
+            <div class="relative z-10">
+              <p class="text-sm uppercase tracking-[.24em] text-cyan-200 mb-3">Concept map</p>
+              <div class="grid grid-cols-2 gap-3">
+                <div class="rounded-2xl bg-white/10 p-4 border border-white/10">
+                  <p class="font-bold">Fields</p><p class="text-sm text-blue-100">AM knowledge domains and thrust areas</p>
+                </div>
+                <div class="rounded-2xl bg-white/10 p-4 border border-white/10">
+                  <p class="font-bold">Crops</p><p class="text-sm text-blue-100">Funded or prospective R&D projects</p>
+                </div>
+                <div class="rounded-2xl bg-white/10 p-4 border border-white/10">
+                  <p class="font-bold">Irrigation</p><p class="text-sm text-blue-100">Continuous learning, scanning, and evidence</p>
+                </div>
+                <div class="rounded-2xl bg-white/10 p-4 border border-white/10">
+                  <p class="font-bold">Weather</p><p class="text-sm text-blue-100">Policy, funding, tech pace, mission demand</p>
+                </div>
+              </div>
+              <div class="mt-5 rounded-2xl bg-yellow-300 text-slate-900 p-4 font-bold">The PM is not the bottleneck because of skill. The PM is overburdened by mechanical portfolio work.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </header>
+
+  <main>
+    <section id="evidence" class="max-w-7xl mx-auto px-5 -mt-12 mb-12">
+      <div class="rounded-3xl bg-white p-6 md:p-8 shadow-xl border border-slate-200">
+        <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-6">
+          <div>
+            <p class="text-sm uppercase tracking-[.24em] text-blue-700 font-bold">Evidence gallery</p>
+            <h2 class="text-3xl md:text-4xl font-black mt-2">Real imagery anchors the abstract model.</h2>
+          </div>
+          <p class="text-slate-600 max-w-2xl">Use these DVIDS visuals as teaching anchors: actual DLA AM collaboration, depot production, part comparison, ground-vehicle sustainment, and logistics-to-mission delivery.</p>
+        </div>
+        <div id="imageGallery" class="grid md:grid-cols-2 xl:grid-cols-3 gap-5"></div>
+        <div class="mt-5 rounded-2xl bg-blue-50 border border-blue-100 p-4 text-sm text-slate-700">
+          <strong>Hosting note:</strong> download the selected public DVIDS images into <code class="font-bold">assets/dvids/</code> using the file names shown in each card. The cards include fallbacks so the page remains readable before assets are added.
+        </div>
+      </div>
+    </section>
+
+    <section id="learn" class="max-w-7xl mx-auto px-5 -mt-12">
+      <div class="glass rounded-3xl p-6 md:p-8 shadow-xl">
+        <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
+          <div>
+            <p class="text-sm uppercase tracking-[.24em] text-blue-700 font-bold">Self-guided walkthrough</p>
+            <h2 class="text-3xl md:text-4xl font-black mt-2">Three mismatches create the need for a digital twin.</h2>
+          </div>
+          <p class="text-slate-600 max-w-xl">Click through the logic. Each panel translates the briefing into a plain-language mental model.</p>
+        </div>
+        <div class="grid md:grid-cols-4 gap-3 mb-6" id="stageButtons"></div>
+        <div class="rounded-3xl bg-white p-6 border border-slate-200 min-h-[300px]" id="stagePanel"></div>
+      </div>
+    </section>
+
+    <section class="max-w-7xl mx-auto px-5 py-12">
+      <div class="rounded-3xl bg-white p-6 md:p-8 shadow-sm border border-slate-200 mb-8">
+        <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+          <div>
+            <p class="text-sm uppercase tracking-[.24em] text-blue-700 font-bold">The cognitive bridge</p>
+            <h2 class="text-3xl md:text-4xl font-black mt-2">The dashboard teaches by letting people move through the system.</h2>
+          </div>
+          <p class="text-slate-600 max-w-xl">Instead of asking the audience to absorb a dense R&D portfolio concept in slide order, this tool lets them start with the problem, inspect the map, test scenarios, and arrive at the operating model themselves.</p>
+        </div>
+        <div class="mt-7 grid md:grid-cols-5 gap-7 text-center">
+          <div class="flow-node rounded-2xl bg-slate-50 border border-slate-200 p-4"><p class="text-3xl">🧭</p><p class="font-black mt-2">Orient</p><p class="text-xs text-slate-500 mt-1">Why AM overwhelms PM tools</p></div>
+          <div class="flow-node rounded-2xl bg-slate-50 border border-slate-200 p-4"><p class="text-3xl">🗺️</p><p class="font-black mt-2">Map</p><p class="text-xs text-slate-500 mt-1">BA × TRL as coordinates</p></div>
+          <div class="flow-node rounded-2xl bg-slate-50 border border-slate-200 p-4"><p class="text-3xl">🌾</p><p class="font-black mt-2">Translate</p><p class="text-xs text-slate-500 mt-1">Farm manager metaphor</p></div>
+          <div class="flow-node rounded-2xl bg-slate-50 border border-slate-200 p-4"><p class="text-3xl">🧬</p><p class="font-black mt-2">Fractalize</p><p class="text-xs text-slate-500 mt-1">Thrust → priority → project</p></div>
+          <div class="flow-node rounded-2xl bg-slate-50 border border-slate-200 p-4"><p class="text-3xl">🎛️</p><p class="font-black mt-2">Simulate</p><p class="text-xs text-slate-500 mt-1">Time, confidence, decisions</p></div>
+        </div>
+      </div>
+      <div class="grid lg:grid-cols-3 gap-6">
+        <article class="rounded-3xl p-6 bg-white shadow-sm border border-slate-200">
+          <p class="text-4xl mb-3">👁️</p>
+          <h3 class="text-xl font-black">Visibility mismatch</h3>
+          <p class="mt-3 text-slate-600">There is no integrated view of DLA, other government, industry, academic, and standards activity relevant to AM R&D. Dependencies and gaps remain hidden.</p>
+        </article>
+        <article class="rounded-3xl p-6 bg-white shadow-sm border border-slate-200">
+          <p class="text-4xl mb-3">⚡</p>
+          <h3 class="text-xl font-black">Pace mismatch</h3>
+          <p class="mt-3 text-slate-600">Threats and technologies move faster than traditional RDT&E cycles. The portfolio must update continuously, not annually.</p>
+        </article>
+        <article class="rounded-3xl p-6 bg-white shadow-sm border border-slate-200">
+          <p class="text-4xl mb-3">🧰</p>
+          <h3 class="text-xl font-black">Burden mismatch</h3>
+          <p class="mt-3 text-slate-600">PMs are expected to steward complex portfolios while manually reconciling spreadsheets, BA/TRL alignment, taskers, cost packages, and status boards.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="map" class="max-w-7xl mx-auto px-5 py-8">
+      <div class="grid lg:grid-cols-5 gap-6 items-start">
+        <div class="lg:col-span-2 rounded-3xl bg-white p-6 shadow-sm border border-slate-200">
+          <p class="text-sm uppercase tracking-[.24em] text-blue-700 font-bold">Interactive BA/TRL map</p>
+          <h2 class="text-3xl font-black mt-2">Find the R&D Goldilocks zones.</h2>
+          <p class="mt-4 text-slate-600">Budget Activity and Technology Readiness Level create the coordinate system for portfolio health. Hover over cells to learn what each region implies. Toggle between an underdeveloped portfolio, a balanced target portfolio, and a mature transition-heavy portfolio.</p>
+          <div class="mt-5 flex flex-wrap gap-2" id="portfolioModeButtons"></div>
+          <div class="mt-6 rounded-2xl bg-slate-50 p-4 border border-slate-200" id="mapInsight"></div>
+        </div>
+        <div class="lg:col-span-3 rounded-3xl bg-white p-4 md:p-6 shadow-sm border border-slate-200 relative">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-black text-lg">Project count by BA × TRL</h3>
+            <span class="text-xs text-slate-500">Hover / tap cells</span>
+          </div>
+          <div id="matrix" class="overflow-auto"></div>
+          <div id="tooltip" class="tooltip-card absolute z-20 max-w-xs rounded-2xl bg-slate-950 text-white p-4 shadow-xl text-sm"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="max-w-7xl mx-auto px-5 py-12">
+      <div class="rounded-3xl bg-slate-950 text-white p-6 md:p-8 shadow-xl overflow-hidden relative">
+        <div class="absolute inset-0 wire opacity-25"></div>
+        <div class="relative z-10 grid lg:grid-cols-2 gap-8 items-center">
+          <div>
+            <p class="text-sm uppercase tracking-[.24em] text-cyan-300 font-bold">Farm manager metaphor</p>
+            <h2 class="text-3xl md:text-4xl font-black mt-2">A portfolio PM is managing fields, crops, irrigation, and weather.</h2>
+            <p class="mt-4 text-blue-100">The metaphor makes the novel topic tangible. The dashboard lets the audience manipulate the operating model instead of passively hearing it explained.</p>
+            <div class="mt-6 grid sm:grid-cols-2 gap-3" id="farmCards"></div>
+          </div>
+          <div class="rounded-3xl p-5 bg-white/10 border border-white/10">
+            <div class="grid grid-cols-2 gap-4">
+              <div class="farm-field rounded-2xl p-3 text-slate-900 relative overflow-hidden">
+                <p class="font-black">JAMA / Joint Operations</p>
+                <span class="absolute top-16 left-16 h-5 w-5 rounded-full bg-yellow-500 pulse-dot"></span>
+                <span class="absolute top-24 left-28 h-4 w-4 rounded-full bg-green-600 pulse-dot"></span>
+                <span class="absolute top-20 right-10 h-6 w-6 rounded-full bg-red-500 pulse-dot"></span>
+              </div>
+              <div class="farm-field rounded-2xl p-3 text-slate-900 relative overflow-hidden opacity-90">
+                <p class="font-black">Feedstock Development</p>
+                <span class="absolute top-12 left-12 h-6 w-6 rounded-full bg-blue-500 pulse-dot"></span>
+                <span class="absolute top-28 left-32 h-5 w-5 rounded-full bg-yellow-500 pulse-dot"></span>
+              </div>
+              <div class="farm-field rounded-2xl p-3 text-slate-900 relative overflow-hidden opacity-80">
+                <p class="font-black">MSC Modernization</p>
+                <span class="absolute top-20 left-20 h-7 w-7 rounded-full bg-purple-500 pulse-dot"></span>
+              </div>
+              <div class="rounded-2xl p-4 bg-gradient-to-br from-blue-500 to-cyan-400 text-slate-950">
+                <p class="font-black">Continuous irrigation</p>
+                <p class="text-sm mt-2">Evidence feeds the twin: reports, programs, patents, standards, industry, academia, and SME review.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="twin" class="max-w-7xl mx-auto px-5 py-8">
+      <div class="grid lg:grid-cols-2 gap-6 items-start">
+        <div class="rounded-3xl bg-white p-6 shadow-sm border border-slate-200">
+          <p class="text-sm uppercase tracking-[.24em] text-blue-700 font-bold">Digital twin engine</p>
+          <h2 class="text-3xl font-black mt-2">How the twin converts evidence into PM confidence.</h2>
+          <p class="mt-4 text-slate-600">The twin does not replace judgment. It makes the portfolio visible, keeps it current, and routes more PM time toward judgment-intensive work.</p>
+          <div class="mt-6 space-y-3" id="twinSteps"></div>
+        </div>
+        <div class="rounded-3xl bg-white p-6 shadow-sm border border-slate-200">
+          <h3 class="text-xl font-black mb-3">Fractal Project Creation Engine</h3>
+          <p class="text-slate-600 mb-5">Use the selector to follow one path from thrust area to project record.</p>
+          <label class="text-sm font-bold text-slate-600" for="fractalSelect">Choose a starting focus</label>
+          <select id="fractalSelect" class="mt-2 w-full rounded-xl border border-slate-300 p-3 bg-white"></select>
+          <div id="fractalOutput" class="mt-5 rounded-2xl bg-slate-50 border border-slate-200 p-5"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="maturity" class="max-w-7xl mx-auto px-5 py-12">
+      <div class="rounded-3xl bg-white p-6 md:p-8 shadow-sm border border-slate-200">
+        <div class="grid lg:grid-cols-3 gap-8 items-start">
+          <div>
+            <p class="text-sm uppercase tracking-[.24em] text-blue-700 font-bold">Maturity ladder</p>
+            <h2 class="text-3xl font-black mt-2">What changes as this evolves from prototype to operating system?</h2>
+            <p class="mt-4 text-slate-600">Click each step. This is the simplest way to explain why a digital twin is not merely a better dashboard; it is a progression from static visibility to continuously updated, SME-validated decision support.</p>
+          </div>
+          <div class="lg:col-span-2 grid md:grid-cols-4 gap-3" id="maturityLadder"></div>
+        </div>
+        <div id="maturityOutput" class="mt-6 rounded-3xl bg-slate-50 border border-slate-200 p-6"></div>
+      </div>
+    </section>
+
+    <section id="scenario" class="max-w-7xl mx-auto px-5 py-12">
+      <div class="rounded-3xl bg-white p-6 md:p-8 shadow-xl border border-slate-200">
+        <div class="grid lg:grid-cols-5 gap-8">
+          <div class="lg:col-span-2">
+            <p class="text-sm uppercase tracking-[.24em] text-blue-700 font-bold">Scenario lab</p>
+            <h2 class="text-3xl md:text-4xl font-black mt-2">Move PM time from mechanical work to stewardship.</h2>
+            <p class="mt-4 text-slate-600">Adjust the maturity of the digital twin and see how PM effort shifts. The model is illustrative; it teaches the operating logic rather than forecasting exact hours.</p>
+            <div class="mt-6 space-y-5">
+              <div>
+                <label class="font-bold" for="automation">Twin automation maturity</label>
+                <input id="automation" type="range" min="0" max="100" value="53" class="w-full mt-2" />
+                <div class="flex justify-between text-xs text-slate-500"><span>Manual</span><span>SME-validated twin</span></div>
+              </div>
+              <div>
+                <label class="font-bold" for="scan">External scanning intensity</label>
+                <input id="scan" type="range" min="0" max="100" value="60" class="w-full mt-2" />
+                <div class="flex justify-between text-xs text-slate-500"><span>Ad hoc</span><span>Continuous</span></div>
+              </div>
+              <div>
+                <label class="font-bold" for="sme">Human SME review loop</label>
+                <input id="sme" type="range" min="0" max="100" value="70" class="w-full mt-2" />
+                <div class="flex justify-between text-xs text-slate-500"><span>Occasional</span><span>Embedded</span></div>
+              </div>
+            </div>
+            <div class="mt-6 rounded-2xl bg-yellow-50 border border-yellow-200 p-4" id="scenarioNarrative"></div>
+          </div>
+          <div class="lg:col-span-3">
+            <canvas id="timeChart" height="190"></canvas>
+            <div class="grid md:grid-cols-3 gap-3 mt-5" id="metricCards"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="facilitation" class="max-w-7xl mx-auto px-5 py-12">
+      <div class="rounded-3xl bg-white p-6 md:p-8 shadow-sm border border-slate-200">
+        <div class="grid lg:grid-cols-2 gap-8">
+          <div>
+            <p class="text-sm uppercase tracking-[.24em] text-blue-700 font-bold">How to use this with an audience</p>
+            <h2 class="text-3xl font-black mt-2">Turn the briefing into a guided discovery session.</h2>
+            <p class="mt-4 text-slate-600">The facilitator should avoid explaining every detail upfront. Let the audience form a mental model, then use the interactive elements to surface the hard questions.</p>
+            <div class="mt-5 rounded-2xl bg-blue-50 border border-blue-100 p-4">
+              <p class="font-black">Suggested 12-minute flow</p>
+              <ol class="mt-3 space-y-2 text-sm text-slate-700 list-decimal list-inside">
+                <li>Open with the three mismatches.</li>
+                <li>Let the audience toggle the BA/TRL map.</li>
+                <li>Use the farm metaphor to make the portfolio role intuitive.</li>
+                <li>Show the fractal engine to explain project generation.</li>
+                <li>Close with the scenario lab: “what PM time comes back?”</li>
+              </ol>
+            </div>
+          </div>
+          <div class="rounded-3xl bg-slate-950 text-white p-6">
+            <p class="font-black text-xl">Prompts that create discussion</p>
+            <div class="mt-4 space-y-3" id="discussionPrompts"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="max-w-7xl mx-auto px-5 py-12">
+      <div class="rounded-3xl p-6 md:p-8 bg-gradient-to-br from-blue-900 to-slate-950 text-white shadow-xl">
+        <p class="text-sm uppercase tracking-[.24em] text-cyan-300 font-bold">Audience takeaway</p>
+        <h2 class="text-3xl md:text-4xl font-black mt-2">RDT&E PMs are not under-skilled. They are overburdened.</h2>
+        <p class="mt-5 text-lg text-blue-50 max-w-4xl">A simulation-driven portfolio model can accelerate AM institutionalization without increasing headcount by turning fragmented manual work into a living decision system. The PM shifts from reactive spreadsheet maintainer to proactive portfolio architect.</p>
+        <div class="mt-7 grid md:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div class="rounded-2xl bg-white/10 p-4 border border-white/10">More SME engagement</div>
+          <div class="rounded-2xl bg-white/10 p-4 border border-white/10">Better transition planning</div>
+          <div class="rounded-2xl bg-white/10 p-4 border border-white/10">Continuous external learning</div>
+          <div class="rounded-2xl bg-white/10 p-4 border border-white/10">Credible stakeholder communication</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="max-w-7xl mx-auto px-5 pb-10 text-sm text-slate-500">
+    <p>Prototype teaching tool based on the DLA AM Portfolio Digital Twin concept briefing. Replace placeholder branding, source language, and data values before public release. The scenario lab is illustrative and should be calibrated with validated PM workload data before use as an analytical forecast.</p>
+  </footer>
+
+  <script>
+    const personas = {
+      executive: {
+        label: "Executive",
+        narrative: "Focus the experience on strategic throughput: why AM institutionalization needs a decision system that accelerates readiness without simply adding headcount."
+      },
+      pm: {
+        label: "R&D PM",
+        narrative: "Focus the experience on daily operating burden: what work the twin removes, what judgment it preserves, and where PM time is restored."
+      },
+      sme: {
+        label: "Technical SME",
+        narrative: "Focus the experience on validity: how evidence, BA/TRL definitions, and human review loops keep the model from becoming ungrounded automation."
+      },
+      partner: {
+        label: "Transition Partner",
+        narrative: "Focus the experience on adoption: how early R&D choices connect to qualification, procurement, sustainment, and operational use."
+      }
+    };
+    let selectedPersona = "executive";
+
+    const maturitySteps = [
+      {
+        title: "1. Static inventory",
+        badge: "See",
+        body: "The PM has a list of projects, funding lines, and status artifacts. Visibility improves, but the portfolio is still manually maintained and quickly goes stale.",
+        decision: "Good for: baseline awareness and cleaning up fragmented data."
+      },
+      {
+        title: "2. Mapped portfolio",
+        badge: "Place",
+        body: "Projects are plotted against BA/TRL and thrust areas. Gaps, clusters, and external dependencies become discussable rather than anecdotal.",
+        decision: "Good for: explaining why a portfolio is balanced, skewed, or blind."
+      },
+      {
+        title: "3. Simulated target",
+        badge: "Imagine",
+        body: "The system uses evidence-grounded context and fractal decomposition to propose the R&D projects required for full capability realization.",
+        decision: "Good for: moving from funded reality to the target portfolio needed for institutionalization."
+      },
+      {
+        title: "4. Living twin",
+        badge: "Decide",
+        body: "External scanning, SME review, BA/TRL validation, and what-if modeling keep the portfolio current and decision-ready.",
+        decision: "Good for: PM confidence, stakeholder communication, transition planning, and scenario analysis."
+      }
+    ];
+    let selectedMaturity = 3;
+
+    const discussionPrompts = [
+      "Which BA/TRL cells are blank because they are truly irrelevant, and which are blank because the PM cannot see them yet?",
+      "What external R&D should DLA exploit rather than fund directly?",
+      "Which projects need technical review before they can be trusted in the target portfolio?",
+      "Where does PM judgment become more important once mechanical portfolio work is reduced?",
+      "What evidence would persuade leadership that the simulated target portfolio is credible?"
+    ];
+
+    const stages = [
+      {
+        title: "1. Acceptance → acceleration",
+        kicker: "The capability has been demonstrated, but scale changes the problem.",
+        body: "DLA has shown AM can improve mission execution. The next challenge is not a single part or pilot win; it is industrial-scale operationalization across sustainment logistics.",
+        bullets: ["Move from isolated success to system throughput", "Connect PM actions to capability realization", "Treat AM as a portfolio problem, not a project list"],
+        accent: "bg-cyan-50 border-cyan-200"
+      },
+      {
+        title: "2. Find arable land",
+        kicker: "Acceleration assumes a robust portfolio already exists.",
+        body: "For a novel R&D area, the PM must first survey the landscape, assess what is possible, and define the target portfolio — the golden record of what it will take to realize the capability.",
+        bullets: ["Survey roles, missions, dependencies, and known investments", "Assess statutory, technical, cultural, and achievable boundaries", "Plan priority areas, scanning, partnerships, and resourcing"],
+        accent: "bg-green-50 border-green-200"
+      },
+      {
+        title: "3. Build the BA/TRL map",
+        kicker: "BA and TRL give the portfolio a coordinate system.",
+        body: "A complete portfolio should span early research through operational transition. Each project can be plotted by funding activity and technology maturity to reveal gaps, clusters, and imbalance.",
+        bullets: ["Identify Goldilocks zones for compliant RDT&E", "Track funded and external work", "See whether a thrust area is nascent, balanced, or transition-heavy"],
+        accent: "bg-blue-50 border-blue-200"
+      },
+      {
+        title: "4. Make it living",
+        kicker: "A digital twin turns the portfolio into a decision system.",
+        body: "Retrieval-augmented modeling, evidence feeds, external scanning, and SME review can generate and maintain a high-confidence simulated target portfolio for PM decision support.",
+        bullets: ["Automate BA/TRL checks and portfolio updates", "Run what-if analysis for cost, risk, schedule, and performance", "Restore PM time for judgment, relationships, and transition"],
+        accent: "bg-purple-50 border-purple-200"
+      }
+    ];
+
+    const baRows = ["6.7", "6.5", "6.4", "6.3", "6.2", "6.1"];
+    const trls = [1,2,3,4,5,6,7,8,9];
+    const modes = {
+      underdeveloped: {
+        label: "Underdeveloped",
+        insight: "Most activity clusters in early BA/TRL cells. The PM likely needs external scanning, partnerships, and project generation to build a complete target portfolio.",
+        data: [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,1,1],[0,0,0,0,0,1,1,0,0],[0,2,3,4,2,0,0,0,0],[2,4,5,3,0,0,0,0,0],[3,5,2,0,0,0,0,0,0]]
+      },
+      balanced: {
+        label: "Balanced target",
+        insight: "Activity is distributed across the BA/TRL pathway, giving the PM confidence that the twin has explored both breadth and depth — it gets into the corners.",
+        data: [[0,0,0,0,0,0,0,4,6],[0,0,0,0,0,0,5,11,10],[0,0,0,0,0,8,12,7,0],[0,0,0,9,15,13,7,0,0],[0,0,7,13,10,0,0,0,0],[2,5,6,2,0,0,0,0,0]]
+      },
+      mature: {
+        label: "Transition-heavy",
+        insight: "Activity has shifted toward higher TRLs and later BAs. The PM focus becomes transition readiness, customer alignment, risk closure, and downstream adoption.",
+        data: [[0,0,0,0,0,0,0,9,16],[0,0,0,0,0,0,7,14,18],[0,0,0,0,0,4,10,15,8],[0,0,0,2,5,8,10,0,0],[0,0,2,4,6,0,0,0,0],[0,1,2,0,0,0,0,0,0]]
+      }
+    };
+
+    const baColors = {
+      "6.1": "#f8fafc", "6.2": "#ffe38a", "6.3": "#b8dfaf", "6.4": "#a9d5f2", "6.5": "#c7b9f3", "6.7": "#ef9a9a"
+    };
+
+    const farmCards = [
+      ["Fields", "AM knowledge domains and thrust areas. Each grows at a different rate under different conditions."],
+      ["Crops", "Individual projects, funded or prospective, seeded at the right BA/TRL moment."],
+      ["Irrigation", "Continuous feed of reports, standards, programs, papers, patents, and SME learning."],
+      ["Weather", "Policy, PPBE cycles, mission demand, external R&D progress, and industrial change."]
+    ];
+
+    const twinSteps = [
+      ["1", "Evidence-grounded context", "BA/TRL definitions, directives, standards, public-private partnership data, academia, government programs, DIB signals, commercial applications, patents, and trade data."],
+      ["2", "LLM fractal loop", "Break AM institutionalization into thrusts, impact areas, priority areas, problems, and candidate R&D projects."],
+      ["3", "Human SME review", "Technical, financial, legal, policy, alignment, compliance, gap, and value reviews validate or modify outputs."],
+      ["4", "Decision-ready twin", "A living target portfolio enables what-if analysis, external R&D exploitation, and confident stakeholder communication."]
+    ];
+
+    const fractalOptions = [
+      {
+        label: "JAMA / Joint Operations → Material management",
+        area: "Joint Standards, Qualification, and Certification Ecosystem",
+        priority: "R&D on real-world logistics variables: multi-lot blending, aging, humidity, shipping shock, storage conditions.",
+        project: "Multi-Lot Powder Blending Behavior & Qualification Framework",
+        gap: "No DoD-wide blend-envelope data for logistics operations where perfect lot segregation is unrealistic.",
+        output: "Blend Risk Envelope and delta-qualification protocol."
+      },
+      {
+        label: "Feedstock Development → Storage degradation",
+        area: "Logistics-ready AM feedstock stewardship",
+        priority: "Predictive acceptance criteria for powders, wires, and resins under DLA warehouse and expeditionary conditions.",
+        project: "Aging & Degradation Modeling for AM Materials",
+        gap: "No validated model links calendar time plus storage climate to material-process-property shifts under DoD conditions.",
+        output: "Aging curves, usable-life forecasts, and condition-based acceptance criteria."
+      },
+      {
+        label: "MSC Modernization → Digital thread",
+        area: "Digital Supply Chain & Data Infrastructure",
+        priority: "Make AM data actionable inside logistics systems and transition workflows.",
+        project: "NSN-Level Digital Thread Integration Pilot",
+        gap: "AM qualification and pedigree data are often disconnected from logistics decisions and procurement actionability.",
+        output: "Reference workflow for AM data integration into logistics decision points."
+      }
+    ];
+
+    let selectedStage = 0;
+    let currentMode = "balanced";
+    let timeChart;
+
+    function renderPersonaButtons() {
+      const el = document.getElementById('personaButtons');
+      if (
